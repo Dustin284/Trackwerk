@@ -1,11 +1,12 @@
 import MainPage from './components/MainPage'
 import './App.css'
+import { LanguageProvider } from './i18n/LanguageContext'
 
 function App() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <LanguageProvider>
       <MainPage />
-    </div>
+    </LanguageProvider>
   )
 }
 

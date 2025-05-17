@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Input } from './ui/input';
 import { useDrag } from 'react-dnd';
+import { useLanguage } from '../i18n/LanguageContext';
+import { Waveform } from './ui/Waveform';
+import { decompressWaveform, getOrCreateWaveform, drawWaveform } from '../utils/waveformGenerator';
+
+// Konstante für die Virtualisierung
+const SONG_ROW_HEIGHT = 100; // Geschätzte Höhe einer Zeile in Pixeln
+const BUFFER_ITEMS = 5; // Zusätzliche Elemente über/unter dem sichtbaren Bereich
 
 export default function SongList({ 
   songs, 
@@ -14,29 +22,169 @@ export default function SongList({
   onToggleFavorite,
   onAddTag,
   onRemoveTag,
-  availableTags = []
+  onGenerateWaveform,
+  availableTags = [],
+  progress = 0,
+  duration = 0
 }) {
+  const { t } = useLanguage();
+  
+  // State für Virtualisierung
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const containerRef = useRef(null);
+  
+  // Formatierung der Zeit in mm:ss
+  const formatDuration = useCallback((seconds) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  }, []);
+
+  // Formatierung des Datums
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('de-DE', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (e) {
+      return "";
+    }
+  }, []);
+
+  // Generiere Placeholder für Album-Cover - Memoized für bessere Performance
+  const getAlbumCoverPlaceholder = useCallback((song) => {
+    const initials = ((song.artist?.[0] || '') + (song.name?.[0] || '')).toUpperCase();
+    // Zufällige Hintergrundfarbe basierend auf dem Song-Namen
+    const hue = song.name ? song.name.charCodeAt(0) % 360 : 200;
+    return (
+      <div 
+        className="w-10 h-10 rounded flex items-center justify-center text-white font-bold text-sm"
+        style={{ backgroundColor: `hsl(${hue}, 70%, 60%)` }}
+      >
+        {initials}
+      </div>
+    );
+  }, []);
+  
+  // Scroll-Handler für Virtualisierung
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const scrollTop = containerRef.current.scrollTop;
+    setScrollPosition(scrollTop);
+    
+    // Berechne den sichtbaren Bereich basierend auf der Scroll-Position
+    const visibleStart = Math.floor(scrollTop / SONG_ROW_HEIGHT);
+    const visibleItems = Math.ceil(containerRef.current.clientHeight / SONG_ROW_HEIGHT);
+    
+    // Füge Buffer-Items hinzu, um flüssiges Scrollen zu ermöglichen
+    const start = Math.max(0, visibleStart - BUFFER_ITEMS);
+    const end = Math.min(songs.length, visibleStart + visibleItems + BUFFER_ITEMS);
+    
+    setVisibleRange({ start, end });
+  }, [songs.length]);
+  
+  // Aktualisiere die Virtualisierung beim Mounting und wenn sich die Songs-Liste ändert
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    setContainerHeight(songs.length * SONG_ROW_HEIGHT);
+    handleScroll();
+    
+    // Event-Listener für Scrollen
+    const container = containerRef.current;
+    container.addEventListener('scroll', handleScroll);
+    
+    // Resize-Observer für Größenänderungen
+    const resizeObserver = new ResizeObserver(() => {
+      handleScroll();
+    });
+    
+    resizeObserver.observe(container);
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [songs.length, handleScroll]);
+  
+  if (!songs || songs.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
+        <p className="text-gray-600">{t('noSongsFound')}</p>
+      </div>
+    );
+  }
+
+  // Memoized visible songs für bessere Performance
+  const visibleSongs = useMemo(() => {
+    return songs.slice(visibleRange.start, visibleRange.end);
+  }, [songs, visibleRange]);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {songs.map(song => (
-        <SongCard
-          key={song.id}
-          song={song}
-          currentSong={currentSong}
-          isPlaying={isPlaying}
-          isFavorite={favorites.some(f => f.id === song.id)}
-          onPlay={onPlay}
-          onToggleFavorite={onToggleFavorite}
-          onAddTag={onAddTag}
-          onRemoveTag={onRemoveTag}
-          availableTags={availableTags}
-        />
-      ))}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden w-full">
+      {/* Tabellenkopf */}
+      <div className="grid grid-cols-[auto_2fr_2fr_1fr_1fr_2fr_1fr] px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-700 sticky top-0 z-10">
+        <div className="px-2"></div>
+        <div className="px-2">{t('songName')}</div>
+        <div className="px-2">{t('artist')}</div>
+        <div className="px-2">{t('duration')}</div>
+        <div className="px-2">{t('createdAt')}</div>
+        <div className="px-2">{t('tags')}</div>
+        <div className="px-2">{t('actions')}</div>
+      </div>
+
+      {/* Virtualisierte Songliste */}
+      <div 
+        ref={containerRef}
+        className="overflow-auto"
+        style={{ maxHeight: '70vh' }}
+      >
+        {/* Container mit voller Höhe für den Scrollbar */}
+        <div style={{ height: `${containerHeight}px`, position: 'relative' }}>
+          {/* Nur die sichtbaren Elemente werden gerendert */}
+          {visibleSongs.map((song, index) => (
+            <SongRow
+              key={song.id}
+              song={song}
+              currentSong={currentSong}
+              isPlaying={isPlaying}
+              isFavorite={favorites && favorites.some(f => f.id === song.id)}
+              onPlay={onPlay}
+              onToggleFavorite={onToggleFavorite}
+              onAddTag={onAddTag}
+              onRemoveTag={onRemoveTag}
+              onGenerateWaveform={onGenerateWaveform}
+              availableTags={availableTags}
+              formatDuration={formatDuration}
+              formatDate={formatDate}
+              getAlbumCoverPlaceholder={getAlbumCoverPlaceholder}
+              progress={progress}
+              duration={duration}
+              style={{ 
+                position: 'absolute', 
+                top: `${(visibleRange.start + index) * SONG_ROW_HEIGHT}px`,
+                width: '100%'
+              }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function SongCard({ 
+// Optimierte SongRow-Komponente mit React.memo für weniger Re-Renderings
+const SongRow = React.memo(function SongRow({ 
   song, 
   currentSong, 
   isPlaying, 
@@ -45,8 +193,16 @@ function SongCard({
   onToggleFavorite,
   onAddTag,
   onRemoveTag,
-  availableTags
+  onGenerateWaveform,
+  availableTags,
+  formatDuration,
+  formatDate,
+  getAlbumCoverPlaceholder,
+  progress = 0,
+  duration = 0,
+  style = {}
 }) {
+  const { t } = useLanguage();
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'SONG',
     item: { song },
@@ -54,139 +210,327 @@ function SongCard({
       isDragging: !!monitor.isDragging(),
     }),
   }));
-
-  const [customTag, setCustomTag] = useState('');
   const [showTagMenu, setShowTagMenu] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const [comment, setComment] = useState(song.comment || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const [waveformError, setWaveformError] = useState(false);
+  const waveformRef = useRef(null); // Referenz für den Waveform-Container
+  
+  const isCurrentSong = currentSong && currentSong.id === song.id;
+
+  // Speichere Kommentar wenn Bearbeitungsmodus verlassen wird
+  useEffect(() => {
+    if (!isEditing && comment !== song.comment) {
+      // Hier würde die Funktion zum Speichern des Kommentars aufgerufen
+      console.log(`Kommentar für Song ${song.id} gespeichert: ${comment}`);
+    }
+  }, [isEditing, comment, song]);
+
+  // Wellenform-Daten dekomprimieren - nur einmal mit useMemo
+  const waveformData = useMemo(() => {
+    if (song.waveform) {
+      try {
+        return decompressWaveform(song.waveform);
+      } catch (error) {
+        console.error("Fehler beim Dekomprimieren der Wellenform:", error);
+        setWaveformError(true);
+        return [];
+      }
+    }
+    return [];
+  }, [song.waveform]); // Nur neu berechnen, wenn sich die Wellenform ändert
+
+  // Berechne die aktuelle Position für die Waveform, falls dieser Song gerade abgespielt wird
+  const waveformProgress = useMemo(() => {
+    if (isCurrentSong && duration > 0) {
+      return progress / duration;
+    }
+    return 0;
+  }, [isCurrentSong, progress, duration]);
+
+  // useEffect zur effizienten Steuerung des Waveform-Updates
+  useEffect(() => {
+    // Nur zeichnen wenn Daten und Container vorhanden sind
+    if (waveformData.length > 0 && waveformRef.current) {
+      // Cache-ID für diesen Song erstellen
+      const cacheId = `song-${song.id}`;
+      
+      // Container-Dimensionen ermitteln
+      const container = waveformRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight || 32; // Fallback-Höhe
+      
+      // Waveform zeichnen mit dem neuen System
+      drawWaveform({
+        container,
+        waveformData,
+        cacheId,
+        width: containerWidth,
+        height: containerHeight,
+        progress: waveformProgress,
+        type: 'svg', // SVG-Renderer verwenden
+        activeColor: '#333333',
+        inactiveColor: 'rgba(120, 120, 120, 0.5)'
+      });
+    }
+  }, [waveformData, waveformProgress, song.id]);
+
+  // Direkt den Song abspielen, wenn auf die Zeile geklickt wird
+  const handleRowClick = (e) => {
+    // Verhindere das Abspielen, wenn auf bestimmte interaktive Elemente geklickt wird
+    if (e.target.closest('.no-play-trigger')) {
+      return;
+    }
+    
+    // Löse die onPlay-Funktion aus
+    if (onPlay) {
+      onPlay(song);
+    }
+  };
+
+  // Tag-Eingabe verarbeiten
+  const handleAddTag = (e) => {
+    e.preventDefault();
+    if (newTag.trim()) {
+      onAddTag(song.id, newTag.trim());
+      setNewTag('');
+    }
+  };
+
+  // Funktion zum Generieren der Wellenform für diesen Song
+  const handleGenerateWaveform = (e) => {
+    e.stopPropagation(); // Verhindert, dass der Song abgespielt wird
+    if (onGenerateWaveform) {
+      onGenerateWaveform(song);
+    }
+  };
+
+  // Optimierte Rendering-Entscheidung für die Waveform
+  const renderWaveform = !!waveformData.length && (
+    <div 
+      ref={waveformRef}
+      className="w-full h-8 rounded-md overflow-hidden mt-1" 
+    />
+  );
 
   return (
-    <motion.div 
+    <div 
       ref={drag}
-      layout 
-      whileHover={{ scale: 1.02 }} 
-      whileTap={{ scale: 0.98 }}
-      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className={`grid grid-cols-[auto_2fr_2fr_1fr_1fr_2fr_1fr] px-4 py-3 ${
+        isCurrentSong ? 'bg-blue-50' : isDragging ? 'opacity-50' : 'hover:bg-gray-50'
+      } transition-colors duration-150 cursor-pointer`}
+      onClick={handleRowClick}
+      style={style}
     >
-      <Card className={`${currentSong?.id === song.id ? 'border-blue-500' : ''}`}>
-        <CardHeader className="flex flex-row items-start justify-between pb-2">
-          <CardTitle className="truncate">{song.name}</CardTitle>
+      {/* Album Cover */}
+      <div className="px-2 flex items-center">
+        {song.albumCover ? (
+          <img 
+            src={song.albumCover} 
+            alt={song.album || t('unknownAlbum')} 
+            className="w-10 h-10 rounded object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentNode.appendChild(getAlbumCoverPlaceholder(song));
+            }}
+          />
+        ) : getAlbumCoverPlaceholder(song)}
+      </div>
+
+      {/* Song Name */}
+      <div className="px-2 flex items-center">
+        <div className="flex flex-col w-full">
+          <span className={`truncate font-medium ${isCurrentSong ? 'text-blue-700' : 'text-gray-900'}`}>
+            {song.name || t('unknownTitle')}
+          </span>
+          <span className="text-xs text-gray-500">{song.album || ''}</span>
+          
+          {/* Waveform-Anzeige (wenn Daten vorhanden) */}
+          {renderWaveform}
+        </div>
+      </div>
+
+      {/* Artist */}
+      <div className="px-2 flex items-center">
+        <span className="truncate text-gray-700">{song.artist || t('unknownArtist')}</span>
+      </div>
+
+      {/* Duration */}
+      <div className="px-2 flex items-center text-sm text-gray-600">
+        {formatDuration(song.duration)}
+      </div>
+
+      {/* Creation Date */}
+      <div className="px-2 flex items-center text-sm text-gray-600">
+        {formatDate(song.createdAt)}
+      </div>
+
+      {/* Tags */}
+      <div className="px-2 flex items-center overflow-hidden relative">
+        <div className="flex flex-wrap gap-1 no-play-trigger">
+          {song.tags && song.tags.map(tag => (
+            <Badge 
+              key={tag} 
+              variant="outline" 
+              className="text-xs group flex items-center bg-gray-100 text-gray-700 border-gray-200 font-normal rounded-full px-2"
+            >
+              <span className="truncate max-w-20">{tag}</span>
+              <button 
+                className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveTag && onRemoveTag(song.id, tag);
+                }}
+              >
+                <XIcon className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          
+          <div className="relative no-play-trigger">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-5 w-5 rounded-full p-0 text-xs bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTagMenu(!showTagMenu);
+              }}
+            >
+              <PlusIcon className="h-3 w-3" />
+            </Button>
+            
+            {showTagMenu && (
+              <div className="absolute z-50 mt-1 w-48 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm p-2 shadow-lg left-0 top-full">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1">
+                    {availableTags
+                      .filter(tag => !song.tags?.includes(tag))
+                      .map(tag => (
+                        <Badge 
+                          key={tag} 
+                          variant="outline" 
+                          className="cursor-pointer bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 font-normal rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddTag && onAddTag(song.id, tag);
+                            setShowTagMenu(false);
+                          }}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder={t('tagNamePlaceholder')}
+                      className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-full text-gray-800 font-normal bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && newTag.trim()) {
+                          e.stopPropagation();
+                          onAddTag && onAddTag(song.id, newTag.trim());
+                          setNewTag('');
+                          setShowTagMenu(false);
+                        }
+                      }}
+                    />
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-full font-normal h-6 text-xs px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (newTag.trim()) {
+                          onAddTag && onAddTag(song.id, newTag.trim());
+                          setNewTag('');
+                          setShowTagMenu(false);
+                        }
+                      }}
+                    >
+                      {t('addTagButton')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="px-2 flex items-center justify-end space-x-2 no-play-trigger">
+        {!waveformData.length && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onToggleFavorite(song.id)}
-            className="h-8 w-8 text-gray-700"
+            onClick={handleGenerateWaveform}
+            className="h-8 w-8 no-play-trigger"
+            title={t('generatingWaveform')}
           >
-            {isFavorite ? <HeartFilledIcon /> : <HeartIcon />}
+            <WaveformIcon className="h-4 w-4 text-gray-600" />
           </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-500 mb-2">{song.artist}</p>
-          <div className="flex flex-wrap gap-1">
-            {song.tags.map(tag => (
-              <Badge 
-                key={tag} 
-                variant="outline" 
-                className="text-xs group flex items-center gap-1 bg-transparent"
-              >
-                {tag}
-                <button 
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => onRemoveTag(song.id, tag)}
-                >
-                  <XIcon className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-            
-            <div className="relative">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-5 w-5 rounded-full p-0 text-xs bg-transparent"
-                onClick={() => setShowTagMenu(!showTagMenu)}
-              >
-                <PlusIcon className="h-3 w-3" />
-              </Button>
-              
-              {showTagMenu && (
-                <div className="absolute z-50 mt-1 w-60 rounded-md border bg-white p-2 shadow-md">
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Add Tags</h4>
-                    
-                    {availableTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {availableTags
-                          .filter(tag => !song.tags.includes(tag))
-                          .map(tag => (
-                            <Badge 
-                              key={tag} 
-                              variant="outline" 
-                              className="cursor-pointer bg-transparent hover:bg-gray-100"
-                              onClick={() => {
-                                onAddTag(song.id, tag);
-                                setShowTagMenu(false);
-                              }}
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={customTag}
-                        onChange={(e) => setCustomTag(e.target.value)}
-                        placeholder="Custom tag..."
-                        className="flex-1 px-2 py-1 text-sm border rounded"
-                      />
-                      <Button 
-                        size="sm"
-                        variant="outline"
-                        className="bg-transparent"
-                        onClick={() => {
-                          if (customTag.trim()) {
-                            onAddTag(song.id, customTag.trim());
-                            setCustomTag('');
-                            setShowTagMenu(false);
-                          }
-                        }}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() => onPlay(song)}
-            variant={currentSong?.id === song.id && isPlaying ? 'default' : 'outline'}
-            className="w-full bg-transparent hover:bg-gray-100"
-          >
-            {currentSong?.id === song.id && isPlaying ? 'Now Playing' : 'Play'}
-          </Button>
-        </CardFooter>
-      </Card>
-    </motion.div>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggleFavorite) onToggleFavorite(song.id);
+          }}
+          className="h-8 w-8 no-play-trigger"
+          title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+        >
+          {isFavorite ? (
+            <HeartFilledIcon className="h-4 w-4 text-red-500" />
+          ) : (
+            <HeartIcon className="h-4 w-4 text-gray-600" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTagMenu(!showTagMenu);
+          }}
+          className="h-8 w-8 no-play-trigger"
+          title={t('addTagToSong')}
+        >
+          <TagIcon className="h-4 w-4 text-gray-600" />
+        </Button>
+      </div>
+    </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function für React.memo
+  // Nur neu rendern, wenn sich wichtige Props ändern
+  return (
+    prevProps.song.id === nextProps.song.id &&
+    prevProps.isCurrentSong === nextProps.isCurrentSong &&
+    prevProps.isPlaying === nextProps.isPlaying &&
+    prevProps.isFavorite === nextProps.isFavorite &&
+    (prevProps.isCurrentSong ? prevProps.progress === nextProps.progress : true)
+  );
+});
 
 // Icon components
 function HeartIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   );
 }
 
-function HeartFilledIcon() {
+function HeartFilledIcon({ className = "" }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   );
@@ -194,7 +538,7 @@ function HeartFilledIcon() {
 
 function PlusIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -203,9 +547,44 @@ function PlusIcon() {
 
 function XIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function PlayIcon({ className = "" }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function CommentIcon({ className = "" }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+      <line x1="7" y1="7" x2="7.01" y2="7"></line>
+    </svg>
+  );
+}
+
+function WaveformIcon({ className = "" }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="3 15 7 9 11 15 15 9 19 15" />
+      <line x1="3" y1="9" x2="3" y2="15" />
+      <line x1="21" y1="9" x2="21" y2="15" />
     </svg>
   );
 } 

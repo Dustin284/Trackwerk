@@ -10,4 +10,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Server-Konfiguration
+  server: {
+    port: 5173,
+    open: true, // Öffnet den Browser automatisch
+    host: true  // Erlaubt den Zugriff von anderen Geräten im Netzwerk
+  },
+  // CSS-Verarbeitung optimieren
+  css: {
+    devSourcemap: true,
+  },
+  build: {
+    sourcemap: true,
+  }
 })
