@@ -8,7 +8,7 @@ import { useDrag } from 'react-dnd';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Waveform } from './ui/Waveform';
 import { decompressWaveform, getOrCreateWaveform, drawWaveform } from '../utils/waveformGenerator';
-import { Heart, MessageSquare, Tag, Plus, X, Play, AudioWaveform, Music } from 'lucide-react';
+import { Icon } from './ui/icon';
 
 // Konstante für die Virtualisierung
 const SONG_ROW_HEIGHT = 100; // Geschätzte Höhe einer Zeile in Pixeln
@@ -384,7 +384,7 @@ const SongRow = React.memo(function SongRow({
                   onRemoveTag && onRemoveTag(song.id, tag);
                 }}
               >
-                <X className="h-3 w-3" />
+                <Icon name="close" className="h-3 w-3" />
               </button>
             </Badge>
           ))}
@@ -399,7 +399,7 @@ const SongRow = React.memo(function SongRow({
                 setShowTagMenu(!showTagMenu);
               }}
             >
-              <Plus className="h-3 w-3" />
+              <Icon name="add" className="h-3 w-3" />
             </Button>
             
             {showTagMenu && (
@@ -474,20 +474,8 @@ const SongRow = React.memo(function SongRow({
             className="h-8 w-8 no-play-trigger bg-gray-200 hover:bg-gray-300 text-gray-800"
             title={t('generatingWaveform')}
           >
-            <AudioWaveform 
-              className="h-4 w-4 text-gray-800" 
-              size={16} 
-              strokeWidth={2}
-              color="currentColor"
-              style={{ display: 'inline-block', verticalAlign: 'middle' }}
-            />
-            <Music 
-              className="ml-1 h-4 w-4 text-gray-800" 
-              size={16} 
-              strokeWidth={2}
-              color="currentColor"
-              style={{ display: 'inline-block', verticalAlign: 'middle' }}
-            />
+            <Icon name="audioWaveform" className="h-4 w-4 text-gray-800" size={16} strokeWidth={2} color="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+            <Icon name="music" className="ml-1 h-4 w-4 text-gray-800" size={16} strokeWidth={2} color="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
           </Button>
         )}
         <Button
@@ -501,9 +489,9 @@ const SongRow = React.memo(function SongRow({
           title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
         >
           {isFavorite ? (
-            <Heart className="h-4 w-4 text-red-500 fill-current" />
+            <Icon name="heart" className="h-4 w-4 text-red-500 fill-current" />
           ) : (
-            <Heart className="h-4 w-4 text-gray-800" />
+            <Icon name="heart" className="h-4 w-4 text-gray-800" />
           )}
         </Button>
         <Button
@@ -516,7 +504,7 @@ const SongRow = React.memo(function SongRow({
           className="h-8 w-8 no-play-trigger bg-gray-200 hover:bg-gray-300 text-gray-800"
           title={t('addTagToSong')}
         >
-          <Tag className="h-4 w-4 text-gray-800" />
+          <Icon name="tag" className="h-4 w-4 text-gray-800" />
         </Button>
       </div>
     </div>

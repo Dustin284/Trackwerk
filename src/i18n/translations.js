@@ -113,7 +113,69 @@ export const translations = {
     loadingHint: "Dies kann je nach Größe der Bibliothek einige Zeit dauern. Wellenformen werden für alle Songs generiert.",
     showDetails: "Details anzeigen",
     hideDetails: "Details verbergen",
-    songs: "Lieder"
+    songs: "Lieder",
+    
+    // Keyboard Shortcuts
+    keyboardShortcuts: "Tastenkombinationen",
+    configureKeyboardShortcutsDesc: "Konfiguriere Tastenkombinationen für die Wiedergabesteuerung",
+    pressAnyKey: "Taste drücken...",
+    resetToDefault: "Zurücksetzen",
+    applyChanges: "Änderungen anwenden",
+    playPause: "Wiedergabe/Pause",
+    stop: "Stopp",
+    next: "Nächster Song",
+    previous: "Vorheriger Song",
+    forward: "10s vorwärts",
+    backward: "10s zurück",
+    volumeUp: "Lauter",
+    volumeDown: "Leiser",
+    mute: "Stummschalten/Aktivieren",
+    focusSearch: "Suche fokussieren",
+    
+    // Moderne UI-Elemente
+    darkMode: "Dunkelmodus",
+    lightMode: "Hellmodus",
+    systemTheme: "Systemeinstellung",
+    appearance: "Erscheinungsbild",
+    animations: "Animationen",
+    reducedMotion: "Reduzierte Bewegung",
+    accentColor: "Akzentfarbe",
+    defaultView: "Standardansicht",
+    gridView: "Rasteransicht",
+    listView: "Listenansicht",
+    compactView: "Kompakte Ansicht",
+    
+    // Neue Tab-Beschriftungen
+    libraryTab: "Bibliothek",
+    playlistsTab: "Playlists",
+    artistsTab: "Künstler",
+    albumsTab: "Alben",
+    
+    // Moderne Aktionen
+    shareButton: "Teilen",
+    addToPlaylist: "Zur Playlist hinzufügen",
+    createPlaylist: "Playlist erstellen",
+    editMetadata: "Metadaten bearbeiten",
+    showInFinder: "Im Finder zeigen",
+    
+    // Wiedergabeeinstellungen
+    playbackSettings: "Wiedergabeeinstellungen",
+    startPositionLabel: "Startposition",
+    startPositionDescription: "Position, an der die Wiedergabe starten soll",
+    startPositionInfo: "Bestimmt, ob ein Song von Anfang an oder an einer bestimmten Position starten soll",
+    startPositionPercentage: "{{percentage}}%",
+    startPositionBeginning: "Anfang",
+    startPositionLast: "Letzte Position",
+    startPositionCustom: "Benutzerdefiniert",
+    
+    // Erweiterte Wiedergabeeinstellungen
+    playbackBehavior: "Wiedergabeverhalten",
+    crossfadeDuration: "Überblendungsdauer",
+    crossfadeInfo: "Dauer der Überblendung zwischen Songs",
+    gaplessPlayback: "Nahtlose Wiedergabe",
+    gaplessPlaybackInfo: "Eliminiert Pausen zwischen Songs",
+    autoPlayNext: "Automatisch nächsten Song abspielen",
+    autoPlayNextInfo: "Spielt automatisch den nächsten Song in der Warteschlange ab",
   },
   
   en: {
@@ -229,7 +291,69 @@ export const translations = {
     loadingHint: "This may take a while depending on your library size. Waveforms are being generated for all songs.",
     showDetails: "Show Details",
     hideDetails: "Hide Details",
-    songs: "songs"
+    songs: "songs",
+    
+    // Keyboard Shortcuts
+    keyboardShortcuts: "Keyboard Shortcuts",
+    configureKeyboardShortcutsDesc: "Configure keyboard shortcuts for playback control",
+    pressAnyKey: "Press any key...",
+    resetToDefault: "Reset to Default",
+    applyChanges: "Apply Changes",
+    playPause: "Play/Pause",
+    stop: "Stop",
+    next: "Next Song",
+    previous: "Previous Song",
+    forward: "Forward 10s",
+    backward: "Backward 10s",
+    volumeUp: "Volume Up",
+    volumeDown: "Volume Down",
+    mute: "Mute/Unmute",
+    focusSearch: "Focus Search",
+    
+    // Modern UI Elements
+    darkMode: "Dark Mode",
+    lightMode: "Light Mode",
+    systemTheme: "System Theme",
+    appearance: "Appearance",
+    animations: "Animations",
+    reducedMotion: "Reduced Motion",
+    accentColor: "Accent Color",
+    defaultView: "Default View",
+    gridView: "Grid View",
+    listView: "List View",
+    compactView: "Compact View",
+    
+    // New Tab Labels
+    libraryTab: "Library",
+    playlistsTab: "Playlists",
+    artistsTab: "Artists",
+    albumsTab: "Albums",
+    
+    // Modern Actions
+    shareButton: "Share",
+    addToPlaylist: "Add to Playlist",
+    createPlaylist: "Create Playlist",
+    editMetadata: "Edit Metadata",
+    showInFinder: "Show in Finder",
+    
+    // Playback Settings
+    playbackSettings: "Playback Settings",
+    startPositionLabel: "Start Position",
+    startPositionDescription: "Position where playback should start",
+    startPositionInfo: "Determines whether a song should start from the beginning or a specific position",
+    startPositionPercentage: "{{percentage}}%",
+    startPositionBeginning: "Beginning",
+    startPositionLast: "Last Position",
+    startPositionCustom: "Custom",
+    
+    // Advanced Playback Settings
+    playbackBehavior: "Playback Behavior",
+    crossfadeDuration: "Crossfade Duration",
+    crossfadeInfo: "Duration of the crossfade between songs",
+    gaplessPlayback: "Gapless Playback",
+    gaplessPlaybackInfo: "Eliminates gaps between songs",
+    autoPlayNext: "Auto Play Next",
+    autoPlayNextInfo: "Automatically plays the next song in the queue",
   }
 };
 

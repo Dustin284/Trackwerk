@@ -6,7 +6,8 @@ import { Input } from './ui/input';
 import TrackWerkLogo from '../assets/logo';
 import { useLanguage } from '../i18n/LanguageContext';
 import { languageNames } from '../i18n/translations';
-import { X, Folder, FolderPlus, Info } from 'lucide-react';
+import { Icon } from './ui/icon';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 
 export default function SettingsPage({ 
   musicLibraryPath, 
@@ -20,7 +21,9 @@ export default function SettingsPage({
   onImportData,
   onClearAllSongs,
   startPositionPercent = 0,
-  setStartPositionPercent
+  setStartPositionPercent,
+  keyBinds,
+  setKeyBinds
 }) {
   const { t, language, changeLanguage } = useLanguage();
   const [newTagName, setNewTagName] = useState('');
@@ -218,6 +221,85 @@ export default function SettingsPage({
     event.target.value = '';
   };
 
+  // Neuer State für Tastenbelegung
+  const [editingKeyBind, setEditingKeyBind] = useState(null);
+  const [tempKeyBinds, setTempKeyBinds] = useState({ ...keyBinds });
+
+  // Funktion zum Starten der Bearbeitung einer Tastenkombination
+  const startEditingKeyBind = (keyName) => {
+    setEditingKeyBind(keyName);
+  };
+
+  // Funktion zum Speichern der neuen Tastenkombination
+  const handleKeyDown = (e) => {
+    if (!editingKeyBind) return;
+    
+    e.preventDefault();
+    
+    // Spezielle Tasten abfangen
+    let keyValue;
+    if (e.key === ' ') {
+      keyValue = ' '; // Leerzeichen
+    } else if (e.key === 'Escape') {
+      // Abbrechen der Bearbeitung
+      setEditingKeyBind(null);
+      return;
+    } else {
+      keyValue = e.key;
+    }
+    
+    // Neue Tastenkombination setzen
+    const newBinds = { ...tempKeyBinds, [editingKeyBind]: keyValue };
+    setTempKeyBinds(newBinds);
+    setEditingKeyBind(null);
+  };
+
+  // Event-Listener für globale Tasteneingaben beim Bearbeiten
+  useEffect(() => {
+    if (editingKeyBind) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [editingKeyBind]);
+
+  // Funktion zum Anwenden der Änderungen
+  const applyKeyBinds = () => {
+    setKeyBinds(tempKeyBinds);
+  };
+
+  // Funktion zum Zurücksetzen auf Standardwerte
+  const resetKeyBinds = () => {
+    const defaultKeyBinds = {
+      playPause: " ", // Leertaste
+      stop: "s",
+      next: "ArrowDown",
+      previous: "ArrowUp",
+      forward: "ArrowRight",
+      backward: "ArrowLeft",
+      volumeUp: "+",
+      volumeDown: "-",
+      mute: "m",
+      focusSearch: "f"
+    };
+    setTempKeyBinds(defaultKeyBinds);
+  };
+
+  // Hilfsfunktion zur benutzerfreundlichen Anzeige von Tasten
+  const formatKeyDisplay = (key) => {
+    switch (key) {
+      case " ": return "Leertaste";
+      case "ArrowUp": return "↑";
+      case "ArrowDown": return "↓";
+      case "ArrowLeft": return "←";
+      case "ArrowRight": return "→";
+      case "Control": return "Strg";
+      case "Escape": return "Esc";
+      default: return key;
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-neutral-50">
       <header className="bg-white/70 backdrop-blur-lg p-5 shadow-sm ring-1 ring-gray-200/50 sticky top-0 z-10">
@@ -272,7 +354,7 @@ export default function SettingsPage({
                                 onClick={() => removeMusicPath(path)}
                                 className="h-7 w-7 text-gray-500 hover:text-red-500 hover:bg-gray-100 rounded-full ml-2"
                               >
-                                <X className="h-4 w-4" />
+                                <Icon name="close" className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
@@ -286,7 +368,7 @@ export default function SettingsPage({
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8">
-                      <FolderPlus className="h-12 w-12 text-gray-400 mb-3" />
+                      <Icon name="folderPlus" className="h-12 w-12 text-gray-400 mb-3" />
                       <p className="text-gray-600 font-medium mb-1">{t('dragFoldersHere')}</p>
                       <p className="text-sm text-gray-500">{t('noMusicPathsAdded')}</p>
                     </div>
@@ -300,7 +382,7 @@ export default function SettingsPage({
                       variant="outline"
                       className="bg-white text-gray-700 border-gray-300 hover:bg-gray-100 rounded-lg"
                     >
-                      <Folder className="h-4 w-4 mr-2" /> 
+                      <Icon name="folder" className="h-4 w-4 mr-2" /> 
                       {t('browseFolderButton')}
                     </Button>
                     
@@ -414,7 +496,7 @@ export default function SettingsPage({
                         onClick={() => removeTag(tag)}
                         className="ml-1 text-gray-500 hover:text-red-500"
                       >
-                        <X className="h-3 w-3" />
+                        <Icon name="close" className="h-3 w-3" />
                       </button>
                     </Badge>
                   ))
@@ -498,7 +580,7 @@ export default function SettingsPage({
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <div className="flex">
                   <div className="text-blue-600 mr-2">
-                    <Info />
+                    <Icon name="info" />
                   </div>
                   <p className="text-sm text-blue-700">
                     {t('startPositionInfo') || "Ein Wert von 0% spielt Songs vom Anfang ab. Höhere Werte können nützlich sein, um Intros zu überspringen."}
@@ -507,6 +589,53 @@ export default function SettingsPage({
               </div>
             </div>
           </SettingsCard>
+
+          {/* Tastenkombinationen */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>{t('keyboardShortcuts')}</CardTitle>
+              <CardDescription>
+                {t('configureKeyboardShortcutsDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(tempKeyBinds).map(([bindName, key]) => (
+                  <div key={bindName} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                    <label className="text-gray-700">
+                      {t(bindName)}
+                    </label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditingKeyBind(bindName)}
+                        className={`min-w-20 ${editingKeyBind === bindName ? 'bg-blue-100 border-blue-300' : ''}`}
+                      >
+                        {editingKeyBind === bindName ? t('pressAnyKey') : formatKeyDisplay(key)}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex justify-between mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={resetKeyBinds}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  {t('resetToDefault')}
+                </Button>
+                <Button 
+                  onClick={applyKeyBinds}
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  {t('applyChanges')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
 

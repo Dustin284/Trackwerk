@@ -14,14 +14,12 @@ import TrackWerkLogo from '../assets/logo';
 import SettingsPage from './SettingsPage';
 import { useLanguage } from '../i18n/LanguageContext';
 import { LoadingModal } from './ui/LoadingModal';
+import { Icon } from './ui/icon';
 import { 
-  Search, 
-  Settings, 
   PlayCircle, 
   PauseCircle, 
   StopCircle, 
   Volume2, 
-  AudioWaveform
 } from 'lucide-react';
 import { 
   decompressWaveform, 
@@ -49,7 +47,8 @@ const storageKeys = {
   VOLUME: 'trackwerk_volume',
   SETTINGS: 'trackwerk_settings',
   WAVEFORMS: 'trackwerk-waveforms',
-  START_POSITION: 'trackwerk_start_position'
+  START_POSITION: 'trackwerk_start_position',
+  KEYBINDS: 'trackwerk_keybinds'
 };
 
 const saveToStorage = (key, data) => {
@@ -92,6 +91,20 @@ export default function MainPage() {
   
   // Neue State-Variable für die Startposition (in Prozent)
   const [startPositionPercent, setStartPositionPercent] = useState(() => loadFromStorage(storageKeys.START_POSITION, 0));
+  
+  // Neue State-Variable für Tastenkombinationen
+  const [keyBinds, setKeyBinds] = useState(() => loadFromStorage(storageKeys.KEYBINDS, {
+    playPause: " ", // Leertaste
+    stop: "s",
+    next: "ArrowDown",
+    previous: "ArrowUp",
+    forward: "ArrowRight",
+    backward: "ArrowLeft",
+    volumeUp: "+",
+    volumeDown: "-",
+    mute: "m",
+    focusSearch: "f"
+  }));
   
   // Loading und Waveform state
   const [loading, setLoading] = useState(false);
@@ -177,6 +190,11 @@ export default function MainPage() {
   useEffect(() => {
     saveToStorage(storageKeys.START_POSITION, startPositionPercent);
   }, [startPositionPercent]);
+
+  // Speichere keyBinds im LocalStorage, wenn es sich ändert
+  useEffect(() => {
+    saveToStorage(storageKeys.KEYBINDS, keyBinds);
+  }, [keyBinds]);
 
   // Audio-Element beim ersten Laden initialisieren
   useEffect(() => {
@@ -1007,7 +1025,7 @@ export default function MainPage() {
           const songIndex = updatedSongs.findIndex(s => s.id === song.id);
           if (songIndex === -1) continue;
           
-          // Virtuelle Containergröße festlegen (da wir keinen echten DOM-Container haben)
+          // Virtueller Containergröße festlegen (da wir keinen echten DOM-Container haben)
           const containerWidth = 2000;
           
           // Die initWaveformDisplay-Funktion verwenden, die sowohl die Breite als auch die Dauer berücksichtigt
@@ -1112,6 +1130,82 @@ export default function MainPage() {
     }
   };
 
+  // Tastatur-Event-Handler für globale Tastenkombinationen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Keine Tastenkombinationen, wenn ein Eingabefeld den Fokus hat
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      const key = e.key;
+      
+      // Je nach gedrückter Taste entsprechende Aktion ausführen
+      if (key === keyBinds.playPause) {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (key === keyBinds.stop) {
+        e.preventDefault();
+        handleStop();
+      } else if (key === keyBinds.next) {
+        e.preventDefault();
+        handleNext();
+      } else if (key === keyBinds.previous) {
+        e.preventDefault();
+        handlePrevious();
+      } else if (key === keyBinds.forward) {
+        e.preventDefault();
+        // Vorspulen um 10 Sekunden
+        if (audioElement) {
+          const newTime = Math.min(audioElement.currentTime + 10, duration);
+          handleSeek(newTime);
+        }
+      } else if (key === keyBinds.backward) {
+        e.preventDefault();
+        // Zurückspulen um 10 Sekunden
+        if (audioElement) {
+          const newTime = Math.max(audioElement.currentTime - 10, 0);
+          handleSeek(newTime);
+        }
+      } else if (key === keyBinds.volumeUp) {
+        e.preventDefault();
+        // Lautstärke erhöhen (um 10%)
+        const newVolume = Math.min(volume + 0.1, 1);
+        handleVolumeChange(newVolume);
+      } else if (key === keyBinds.volumeDown) {
+        e.preventDefault();
+        // Lautstärke verringern (um 10%)
+        const newVolume = Math.max(volume - 0.1, 0);
+        handleVolumeChange(newVolume);
+      } else if (key === keyBinds.mute) {
+        e.preventDefault();
+        // Stummschalten
+        if (audioElement) {
+          if (audioElement.volume > 0) {
+            // Speichere aktuelle Lautstärke und stelle auf 0
+            audioElement._previousVolume = audioElement.volume;
+            handleVolumeChange(0);
+          } else {
+            // Vorherige Lautstärke wiederherstellen oder 0.75, wenn keine gespeichert ist
+            handleVolumeChange(audioElement._previousVolume || 0.75);
+          }
+        }
+      } else if (key === keyBinds.focusSearch) {
+        e.preventDefault();
+        // Fokus auf Suchfeld setzen
+        document.querySelector('input[type="text"][placeholder*="search"]')?.focus();
+      }
+    };
+
+    // Event-Listener für Tastenkombinationen hinzufügen
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Event-Listener beim Unmount wieder entfernen
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [keyBinds, audioElement, playing, duration, volume, handlePlayPause, handleStop, handleNext, handlePrevious, handleSeek, handleVolumeChange]);
+
   if (showSettings) {
     return (
       <SettingsPage
@@ -1127,6 +1221,8 @@ export default function MainPage() {
         onClearAllSongs={clearAllSongs}
         startPositionPercent={startPositionPercent}
         setStartPositionPercent={setStartPositionPercent}
+        keyBinds={keyBinds}
+        setKeyBinds={setKeyBinds}
       />
     );
   }
@@ -1156,13 +1252,7 @@ export default function MainPage() {
                 className="text-gray-700 border-gray-300 hover:bg-gray-100 rounded-full px-5"
                 disabled={generatingWaveforms || songs.length === 0}
               >
-                <AudioWaveform 
-                  className="h-4 w-4 mr-2" 
-                  size={16} 
-                  strokeWidth={2}
-                  color="currentColor"
-                  style={{ display: 'inline-block', verticalAlign: 'middle' }}
-                /> 
+                <Icon name="audioWaveform" className="h-4 w-4 mr-2" size={16} strokeWidth={2} color="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }} /> 
                 {t('generateWaveforms')}
               </Button>
               <Button
@@ -1170,7 +1260,7 @@ export default function MainPage() {
                 variant="outline"
                 className="text-gray-700 border-gray-300 hover:bg-gray-100 rounded-full px-5"
               >
-                <Settings className="h-4 w-4 mr-2" /> {t('settings')}
+                <Icon name="settings" className="h-4 w-4 mr-2" /> {t('settings')}
               </Button>
             </div>
           </div>
@@ -1180,7 +1270,7 @@ export default function MainPage() {
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="relative">
               <div className="flex items-center bg-white rounded-full px-3 py-2 border border-gray-200 focus-within:ring-2 focus-within:ring-gray-400 focus-within:border-transparent transition-all duration-200">
-                <Search className="h-5 w-5 text-gray-500 mr-2" />
+                <Icon name="search" className="h-5 w-5 text-gray-500 mr-2" />
                 <input
                   type="text"
                   placeholder={t('searchPlaceholder')}
