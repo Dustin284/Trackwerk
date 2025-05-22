@@ -4,6 +4,7 @@ import { Slider } from './slider';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { decompressWaveform } from '../../utils/waveformGenerator';
+import { Play, Pause, SkipBack, SkipForward, StopCircle, Volume2 } from 'lucide-react';
 
 /**
  * AudioPlayer-Komponente für die Steuerung der Musikwiedergabe
@@ -133,14 +134,14 @@ const AudioPlayer = React.memo(function AudioPlayer({
               <path 
                 d={waveformPath} 
                 stroke="none" 
-                fill="rgba(120, 120, 120, 0.5)"
+                fill="rgba(107, 114, 128, 0.7)"
               />
               
               {/* Abgespielter Teil */}
               <path 
                 d={waveformPath} 
                 stroke="none" 
-                fill="#333333"
+                fill="#2563EB"
                 clipPath={`url(#${clipPathId})`}
               />
             </svg>
@@ -168,36 +169,36 @@ const AudioPlayer = React.memo(function AudioPlayer({
               onClick={onPrevious} 
               variant="ghost" 
               size="icon" 
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full h-9 w-9 sm:h-10 sm:w-10"
+              className="bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-full h-9 w-9 sm:h-10 sm:w-10"
             >
-              <SkipBackIcon />
+              <SkipBack />
             </Button>
             <Button 
               onClick={onStop} 
               variant="ghost" 
               size="icon" 
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full h-9 w-9 sm:h-10 sm:w-10"
+              className="bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-full h-9 w-9 sm:h-10 sm:w-10"
             >
-              <StopIcon />
+              <StopCircle />
             </Button>
             <Button 
               onClick={onPlayPause} 
               size="icon" 
-              variant="ghost" 
-              className="bg-gray-900 text-white hover:bg-gray-800 rounded-full h-10 w-10 sm:h-12 sm:w-12"
+              variant="default" 
+              className="bg-blue-600 text-white hover:bg-blue-700 rounded-full h-10 w-10 sm:h-12 sm:w-12"
             >
-              {isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </Button>
             <Button 
               onClick={onNext} 
               variant="ghost" 
               size="icon" 
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full h-9 w-9 sm:h-10 sm:w-10"
+              className="bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-full h-9 w-9 sm:h-10 sm:w-10"
             >
-              <SkipForwardIcon />
+              <SkipForward />
             </Button>
             <div className="w-20 sm:w-32 flex items-center">
-              <VolumeIcon className="text-gray-600 mr-2" />
+              <Volume2 className="text-gray-800 mr-2" />
               <Slider
                 value={[volume * 100]}
                 max={100}
@@ -229,60 +230,6 @@ const AudioPlayer = React.memo(function AudioPlayer({
 });
 
 export { AudioPlayer };
-
-// Icon-Komponenten
-function PlayIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  );
-}
-
-function PauseIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="6" y="4" width="4" height="16" />
-      <rect x="14" y="4" width="4" height="16" />
-    </svg>
-  );
-}
-
-function StopIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="6" y="6" width="12" height="12" />
-    </svg>
-  );
-}
-
-function SkipBackIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="19 20 9 12 19 4 19 20" />
-      <line x1="5" y1="19" x2="5" y2="5" />
-    </svg>
-  );
-}
-
-function SkipForwardIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="5 4 15 12 5 20 5 4" />
-      <line x1="19" y1="5" x2="19" y2="19" />
-    </svg>
-  );
-}
-
-function VolumeIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  );
-}
 
 // Helfer-Funktion zum Erzeugen einer realistischeren Wellenform
 function generateRealisticWaveform(length = 500, songDuration = 0) {

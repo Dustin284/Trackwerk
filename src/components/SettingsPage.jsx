@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import TrackWerkLogo from '../assets/logo';
 import { useLanguage } from '../i18n/LanguageContext';
 import { languageNames } from '../i18n/translations';
+import { X, Folder, FolderPlus, Info } from 'lucide-react';
 
 export default function SettingsPage({ 
   musicLibraryPath, 
@@ -271,7 +272,7 @@ export default function SettingsPage({
                                 onClick={() => removeMusicPath(path)}
                                 className="h-7 w-7 text-gray-500 hover:text-red-500 hover:bg-gray-100 rounded-full ml-2"
                               >
-                                <XIcon className="h-4 w-4" />
+                                <X className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
@@ -285,7 +286,7 @@ export default function SettingsPage({
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8">
-                      <FolderLargeIcon className="h-12 w-12 text-gray-400 mb-3" />
+                      <FolderPlus className="h-12 w-12 text-gray-400 mb-3" />
                       <p className="text-gray-600 font-medium mb-1">{t('dragFoldersHere')}</p>
                       <p className="text-sm text-gray-500">{t('noMusicPathsAdded')}</p>
                     </div>
@@ -299,7 +300,7 @@ export default function SettingsPage({
                       variant="outline"
                       className="bg-white text-gray-700 border-gray-300 hover:bg-gray-100 rounded-lg"
                     >
-                      <FolderIcon className="h-4 w-4 mr-2" /> 
+                      <Folder className="h-4 w-4 mr-2" /> 
                       {t('browseFolderButton')}
                     </Button>
                     
@@ -413,7 +414,7 @@ export default function SettingsPage({
                         onClick={() => removeTag(tag)}
                         className="ml-1 text-gray-500 hover:text-red-500"
                       >
-                        <XIcon className="h-3 w-3" />
+                        <X className="h-3 w-3" />
                       </button>
                     </Badge>
                   ))
@@ -497,7 +498,7 @@ export default function SettingsPage({
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <div className="flex">
                   <div className="text-blue-600 mr-2">
-                    <InfoIcon />
+                    <Info />
                   </div>
                   <p className="text-sm text-blue-700">
                     {t('startPositionInfo') || "Ein Wert von 0% spielt Songs vom Anfang ab. Höhere Werte können nützlich sein, um Intros zu überspringen."}
@@ -522,40 +523,5 @@ function SettingsCard({ title, children }) {
       <h2 className="text-xl font-semibold mb-4 text-gray-900">{title}</h2>
       {children}
     </div>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function FolderIcon({ className }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function FolderLargeIcon({ className }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="16" x2="12" y2="12" />
-      <line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
   );
 } 

@@ -8,6 +8,7 @@ import { useDrag } from 'react-dnd';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Waveform } from './ui/Waveform';
 import { decompressWaveform, getOrCreateWaveform, drawWaveform } from '../utils/waveformGenerator';
+import { Heart, MessageSquare, Tag, Plus, X, Play, AudioWaveform, Music } from 'lucide-react';
 
 // Konstante für die Virtualisierung
 const SONG_ROW_HEIGHT = 100; // Geschätzte Höhe einer Zeile in Pixeln
@@ -270,8 +271,8 @@ const SongRow = React.memo(function SongRow({
         height: containerHeight,
         progress: waveformProgress,
         type: 'svg', // SVG-Renderer verwenden
-        activeColor: '#333333',
-        inactiveColor: 'rgba(120, 120, 120, 0.5)'
+        activeColor: '#2563EB',
+        inactiveColor: 'rgba(107, 114, 128, 0.7)'
       });
     }
   }, [waveformData, waveformProgress, song.id]);
@@ -383,7 +384,7 @@ const SongRow = React.memo(function SongRow({
                   onRemoveTag && onRemoveTag(song.id, tag);
                 }}
               >
-                <XIcon className="h-3 w-3" />
+                <X className="h-3 w-3" />
               </button>
             </Badge>
           ))}
@@ -398,7 +399,7 @@ const SongRow = React.memo(function SongRow({
                 setShowTagMenu(!showTagMenu);
               }}
             >
-              <PlusIcon className="h-3 w-3" />
+              <Plus className="h-3 w-3" />
             </Button>
             
             {showTagMenu && (
@@ -470,10 +471,23 @@ const SongRow = React.memo(function SongRow({
             variant="ghost"
             size="icon"
             onClick={handleGenerateWaveform}
-            className="h-8 w-8 no-play-trigger"
+            className="h-8 w-8 no-play-trigger bg-gray-200 hover:bg-gray-300 text-gray-800"
             title={t('generatingWaveform')}
           >
-            <WaveformIcon className="h-4 w-4 text-gray-600" />
+            <AudioWaveform 
+              className="h-4 w-4 text-gray-800" 
+              size={16} 
+              strokeWidth={2}
+              color="currentColor"
+              style={{ display: 'inline-block', verticalAlign: 'middle' }}
+            />
+            <Music 
+              className="ml-1 h-4 w-4 text-gray-800" 
+              size={16} 
+              strokeWidth={2}
+              color="currentColor"
+              style={{ display: 'inline-block', verticalAlign: 'middle' }}
+            />
           </Button>
         )}
         <Button
@@ -483,13 +497,13 @@ const SongRow = React.memo(function SongRow({
             e.stopPropagation();
             if (onToggleFavorite) onToggleFavorite(song.id);
           }}
-          className="h-8 w-8 no-play-trigger"
+          className="h-8 w-8 no-play-trigger bg-gray-200 hover:bg-gray-300 text-gray-800"
           title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
         >
           {isFavorite ? (
-            <HeartFilledIcon className="h-4 w-4 text-red-500" />
+            <Heart className="h-4 w-4 text-red-500 fill-current" />
           ) : (
-            <HeartIcon className="h-4 w-4 text-gray-600" />
+            <Heart className="h-4 w-4 text-gray-800" />
           )}
         </Button>
         <Button
@@ -499,10 +513,10 @@ const SongRow = React.memo(function SongRow({
             e.stopPropagation();
             setShowTagMenu(!showTagMenu);
           }}
-          className="h-8 w-8 no-play-trigger"
+          className="h-8 w-8 no-play-trigger bg-gray-200 hover:bg-gray-300 text-gray-800"
           title={t('addTagToSong')}
         >
-          <TagIcon className="h-4 w-4 text-gray-600" />
+          <Tag className="h-4 w-4 text-gray-800" />
         </Button>
       </div>
     </div>
@@ -517,74 +531,4 @@ const SongRow = React.memo(function SongRow({
     prevProps.isFavorite === nextProps.isFavorite &&
     (prevProps.isCurrentSong ? prevProps.progress === nextProps.progress : true)
   );
-});
-
-// Icon components
-function HeartIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}
-
-function HeartFilledIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function PlayIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}>
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
-function CommentIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function TagIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-      <line x1="7" y1="7" x2="7.01" y2="7"></line>
-    </svg>
-  );
-}
-
-function WaveformIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="3 15 7 9 11 15 15 9 19 15" />
-      <line x1="3" y1="9" x2="3" y2="15" />
-      <line x1="21" y1="9" x2="21" y2="15" />
-    </svg>
-  );
-} 
+}); 

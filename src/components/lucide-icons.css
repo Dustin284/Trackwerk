@@ -1,0 +1,56 @@
+/* Lucide Icons CSS */
+
+/* Grundlegende Styles für alle SVG-Icons */
+svg.lucide {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+}
+
+/* Spezifische Styles für AudioWaveform-Icon */
+svg.lucide-audio-waveform {
+  color: currentColor;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Spezifische Styles für Music-Icon */
+svg.lucide-music {
+  color: currentColor;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Spezifische Styles für Heart-Icon */
+svg.lucide-heart {
+  color: currentColor;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Spezifische Styles für Settings-Icon */
+svg.lucide-settings {
+  color: currentColor;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Stelle sicher, dass alle Icons sichtbar sind */
+button svg {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+} 

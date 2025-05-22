@@ -15,6 +15,15 @@ import SettingsPage from './SettingsPage';
 import { useLanguage } from '../i18n/LanguageContext';
 import { LoadingModal } from './ui/LoadingModal';
 import { 
+  Search, 
+  Settings, 
+  PlayCircle, 
+  PauseCircle, 
+  StopCircle, 
+  Volume2, 
+  AudioWaveform
+} from 'lucide-react';
+import { 
   decompressWaveform, 
   compressWaveform, 
   computeWaveformWidth,
@@ -1147,14 +1156,21 @@ export default function MainPage() {
                 className="text-gray-700 border-gray-300 hover:bg-gray-100 rounded-full px-5"
                 disabled={generatingWaveforms || songs.length === 0}
               >
-                <WaveformIcon className="h-4 w-4 mr-2" /> {t('generateWaveforms')}
+                <AudioWaveform 
+                  className="h-4 w-4 mr-2" 
+                  size={16} 
+                  strokeWidth={2}
+                  color="currentColor"
+                  style={{ display: 'inline-block', verticalAlign: 'middle' }}
+                /> 
+                {t('generateWaveforms')}
               </Button>
               <Button
                 onClick={() => setShowSettings(true)}
                 variant="outline"
                 className="text-gray-700 border-gray-300 hover:bg-gray-100 rounded-full px-5"
               >
-                <SettingsIcon className="h-4 w-4 mr-2" /> {t('settings')}
+                <Settings className="h-4 w-4 mr-2" /> {t('settings')}
               </Button>
             </div>
           </div>
@@ -1164,7 +1180,7 @@ export default function MainPage() {
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="relative">
               <div className="flex items-center bg-white rounded-full px-3 py-2 border border-gray-200 focus-within:ring-2 focus-within:ring-gray-400 focus-within:border-transparent transition-all duration-200">
-                <SearchIcon className="h-5 w-5 text-gray-500 mr-2" />
+                <Search className="h-5 w-5 text-gray-500 mr-2" />
                 <input
                   type="text"
                   placeholder={t('searchPlaceholder')}
@@ -1333,69 +1349,5 @@ export default function MainPage() {
         </footer>
       </div>
     </DndProvider>
-  );
-}
-
-// Icon components
-function PlayIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  );
-}
-
-function PauseIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="6" y="4" width="4" height="16" />
-      <rect x="14" y="4" width="4" height="16" />
-    </svg>
-  );
-}
-
-function StopIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="6" y="6" width="12" height="12" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function VolumeIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  );
-}
-
-function WaveformIcon({ className = "" }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="3 15 7 9 11 15 15 9 19 15" />
-      <line x1="3" y1="9" x2="3" y2="15" />
-      <line x1="21" y1="9" x2="21" y2="15" />
-    </svg>
   );
 }

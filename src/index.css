@@ -1,3 +1,6 @@
+/* Importiere die Lucide Icons CSS */
+@import './components/lucide-icons.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

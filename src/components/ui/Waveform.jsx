@@ -21,8 +21,8 @@ export function Waveform({
   className = '',
   interactive = false,
   onSeek,
-  activeColor = '#333333',
-  inactiveColor = 'rgba(120, 120, 120, 0.5)',
+  activeColor = '#2563EB',
+  inactiveColor = 'rgba(107, 114, 128, 0.7)',
   useSvg = false,
   cacheId = null
 }) {
