@@ -19,7 +19,8 @@ import {
   PlayCircle, 
   PauseCircle, 
   StopCircle, 
-  Volume2, 
+  Volume2,
+  Music
 } from 'lucide-react';
 import { 
   decompressWaveform, 
@@ -203,11 +204,11 @@ export default function MainPage() {
     audio.volume = volume;
     
     // Event-Listener für Audio-Updates
-    audio.addEventListener('timeupdate', () => {
+    const handleTimeUpdate = () => {
       setProgress(audio.currentTime);
-    });
+    };
     
-    audio.addEventListener('loadedmetadata', () => {
+    const handleLoadedMetadata = () => {
       console.log("Metadaten geladen, Dauer:", audio.duration);
       if (audio.duration && !isNaN(audio.duration)) {
         setDuration(audio.duration);
@@ -227,30 +228,40 @@ export default function MainPage() {
       } else {
         console.warn("Ungültige Audiodauer erhalten:", audio.duration);
       }
-    });
+    };
     
-    audio.addEventListener('durationchange', () => {
+    const handleDurationChange = () => {
       console.log("Dauer geändert:", audio.duration);
       if (audio.duration && !isNaN(audio.duration)) {
         setDuration(audio.duration);
       }
-    });
+    };
     
-    audio.addEventListener('canplay', () => {
+    const handleCanPlay = () => {
       console.log("Audio kann abgespielt werden, Dauer:", audio.duration);
       if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
       }
-    });
+    };
     
-    audio.addEventListener('error', (e) => {
+    const handleError = (e) => {
       console.error("Audio-Fehler:", e);
-    });
+      setPlaying(false);
+      alert(`Fehler beim Abspielen: ${e.target.error?.message || 'Unbekannter Fehler'}`);
+    };
     
-    audio.addEventListener('ended', () => {
+    const handleEnded = () => {
       console.log("Song beendet, spiele nächsten");
       handleNext();
-    });
+    };
+    
+    // Event-Listener hinzufügen
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('ended', handleEnded);
     
     setAudioElement(audio);
     
@@ -259,12 +270,12 @@ export default function MainPage() {
       console.log("Audio-Element wird entfernt");
       audio.pause();
       audio.src = '';
-      audio.removeEventListener('timeupdate', () => {});
-      audio.removeEventListener('loadedmetadata', () => {});
-      audio.removeEventListener('durationchange', () => {});
-      audio.removeEventListener('canplay', () => {});
-      audio.removeEventListener('error', () => {});
-      audio.removeEventListener('ended', () => {});
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('ended', handleEnded);
     };
   }, []);
 
@@ -551,175 +562,64 @@ export default function MainPage() {
 
   // Song abspielen
   const playSong = async (song) => {
-    if (!song) return;
-    
-    console.log("Versuche Song abzuspielen:", song.name, "Pfad:", song.path);
-    
-    // Update recently played
-    const updatedRecent = [song, ...recent.filter(x => x.id !== song.id)].slice(0, 10);
-    setRecent(updatedRecent);
-    saveToStorage(storageKeys.RECENTLY_PLAYED, updatedRecent);
-    
-    // Wenn der gleiche Song geklickt wird, Play/Pause umschalten
-    if (current && current.id === song.id) {
-      console.log("Gleicher Song, umschalten zwischen Play/Pause");
-      handlePlayPause();
+    if (!song) {
+      console.error('No song provided to playSong');
       return;
     }
-    
-    // Überprüfen, ob der Song-Pfad korrekt ist
+
     if (!song.path) {
-      console.error("Song hat keinen gültigen Pfad:", song);
-      alert("Dieser Song hat keinen gültigen Pfad und kann nicht abgespielt werden.");
+      console.error('Song path is undefined:', song);
       return;
     }
-    
-    // Prüfen, ob der Pfad existiert
+
     try {
+      // Check if file exists
       const exists = await window.api.checkPathExists(song.path);
-      console.log(`Pfad ${song.path} existiert: ${exists}`);
-      
       if (!exists) {
-        console.warn("Song-Datei existiert nicht!");
-        alert(`Die Datei "${song.name}" existiert nicht mehr am angegebenen Pfad.`);
+        console.error('Audio file does not exist:', song.path);
         return;
       }
-      
-      // Aktuelle Playlist-Position aktualisieren
-      const newIndex = playlist.findIndex(s => s.id === song.id);
-      if (newIndex !== -1) {
-        setCurrentSongIndex(newIndex);
-      } else {
-        // Neue Playlist aus gefilterten Songs erstellen, beginnend mit dem gewählten Song
-        const startIndex = filtered.findIndex(s => s.id === song.id);
-        if (startIndex !== -1) {
-          const newPlaylist = [
-            ...filtered.slice(startIndex),
-            ...filtered.slice(0, startIndex)
-          ];
-          setPlaylist(newPlaylist);
-          setCurrentSongIndex(0);
-        }
-      }
-      
-      // Aktuelle Wiedergabe stoppen, falls ein Song abgespielt wird
-      if (playing && audioElement) {
-        console.log("Stoppe aktuelle Wiedergabe");
-        audioElement.pause();
-      }
-      
-      // Song-Informationen setzen und abspielen
-      setCurrent(song);
-      setProgress(0);
-      setDuration(song.duration || 0);
-      
-      // Audio-Element nur einmal erstellen, wenn notwendig
-      if (!audioElement) {
-        console.log("Erstelle neues Audio-Element");
-        const newAudio = new Audio();
-        newAudio.volume = volume;
-        setAudioElement(newAudio);
-      }
-      
-      // Lade die Audiodatei über die API
-      console.log("Lade Audiodatei über API:", song.path);
-      const result = await window.api.loadAudioFile(song.path);
+
+      // Load audio file as buffer
+      console.log('Loading audio file:', song.path);
+      const result = await window.api.readAudioBuffer(song.path);
       
       if (!result.success) {
-        console.error("Fehler beim Laden der Audiodatei:", result.error);
-        alert(`Fehler beim Laden der Audiodatei: ${result.error}`);
+        console.error('Failed to read audio file:', result.error);
         return;
       }
-      
-      console.log("Audiodatei erfolgreich geladen, Größe:", result.size, "Byte");
-      
-      // Setze die dataURL als Quelle und starte die Wiedergabe
-      console.log("Setze Audioquelle");
-      audioElement.src = result.dataUrl;
-      audioElement.load();
-      
-      // Lade zusätzliche Metadaten, falls verfügbar
-      try {
-        const metadataResult = await window.api.loadSongMetadata(song.path);
-        if (metadataResult.success && metadataResult.metadata) {
-          console.log("Zusätzliche Metadaten geladen:", metadataResult.metadata);
-          
-          // Aktualisiere den Song mit den zusätzlichen Metadaten
-          const updatedSong = { 
-            ...song,
-            duration: metadataResult.metadata.duration || song.duration,
-            albumCover: metadataResult.metadata.albumCover || song.albumCover,
-            // Speichere den Album-Cover-Pfad für zukünftige Verwendung
-            albumCoverPath: metadataResult.metadata.albumCoverPath || song.albumCoverPath
-          };
-          
-          // Aktualisiere den aktuellen Song
-          setCurrent(updatedSong);
-          
-          // Aktualisiere auch in der Song-Liste
-          setSongs(prevSongs => 
-            prevSongs.map(s => s.id === song.id ? updatedSong : s)
-          );
-          
-          // Speichere die aktualisierte Liste
-          saveToStorage(storageKeys.SONGS, songs);
-        }
-      } catch (error) {
-        console.warn("Fehler beim Laden zusätzlicher Metadaten:", error);
-      }
-      
-      // Überprüfe, ob ein benutzerdefinierter Startpunkt verwendet werden soll
-      if (startPositionPercent > 0) {
-        // Erst wenn die Metadaten geladen sind, können wir die Dauer verwenden
-        audioElement.addEventListener('loadedmetadata', () => {
-          if (audioElement.duration && !isNaN(audioElement.duration)) {
-            // Berechne die Startposition basierend auf dem Prozentsatz und der Dauer
-            const startTime = (audioElement.duration * startPositionPercent) / 100;
-            console.log(`Starte Song bei ${startPositionPercent}% (${startTime.toFixed(2)} Sekunden)`);
-            audioElement.currentTime = startTime;
-            
-            // Setze den Fortschritt entsprechend
-            setProgress(startTime);
-          } else {
-            console.warn("Konnte Song nicht an benutzerdefinierter Position starten: Dauer nicht verfügbar");
-          }
-        }, { once: true });
-      }
-      
-      console.log("Starte Wiedergabe");
-      try {
-        const playPromise = audioElement.play();
-        playPromise.then(() => {
-          console.log("Song wird erfolgreich abgespielt:", song.name);
-          setPlaying(true);
-          
-          // Setze die Dauer, wenn sie verfügbar wird
-          if (audioElement.duration && !isNaN(audioElement.duration)) {
-            console.log("Dauer erkannt:", audioElement.duration);
-            setDuration(audioElement.duration);
-            
-            // Aktualisiere auch den Song
-            const updatedSong = { ...song, duration: audioElement.duration };
-            setCurrent(updatedSong);
-            
-            // Aktualisiere in der Song-Liste
-            setSongs(prevSongs => 
-              prevSongs.map(s => s.id === song.id ? updatedSong : s)
-            );
-          }
-        }).catch(error => {
-          console.error("Fehler beim Abspielen:", error);
-          alert(`Fehler beim Abspielen: ${error.message}`);
-          setPlaying(false);
+
+      // Convert ArrayBuffer to Uint8Array and create Blob
+      const uint8Array = new Uint8Array(result.buffer);
+      const blob = new Blob([uint8Array], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+
+      // Set up audio element
+      const audio = new Audio();
+      audio.src = url;
+
+      // Wait for metadata to load
+      await new Promise((resolve, reject) => {
+        audio.addEventListener('loadedmetadata', resolve);
+        audio.addEventListener('error', (e) => {
+          console.error('Error loading audio:', e);
+          reject(new Error('Failed to load audio metadata'));
         });
-      } catch (error) {
-        console.error("Unerwarteter Fehler beim Abspielen:", error);
-        alert(`Unerwarteter Fehler: ${error.message}`);
-      }
-      
+      });
+
+      // Play the audio
+      await audio.play();
+      setCurrent(song);
+      setPlaying(true);
+
+      // Clean up the blob URL when playback ends
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(url);
+        setPlaying(false);
+      });
+
     } catch (error) {
-      console.error("Fehler beim Überprüfen oder Laden des Songs:", error);
-      alert(`Fehler: ${error.message}`);
+      console.error('Error playing song:', error);
     }
   };
   
@@ -1252,7 +1152,7 @@ export default function MainPage() {
                 className="text-gray-700 border-gray-300 hover:bg-gray-100 rounded-full px-5"
                 disabled={generatingWaveforms || songs.length === 0}
               >
-                <Icon name="audioWaveform" className="h-4 w-4 mr-2" size={16} strokeWidth={2} color="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }} /> 
+                <Music className="h-4 w-4 mr-2" size={16} strokeWidth={2} color="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }} /> 
                 {t('generateWaveforms')}
               </Button>
               <Button

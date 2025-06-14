@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
@@ -14,8 +14,33 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: true, // Enable web security
+      allowRunningInsecureContent: false // Disallow insecure content
     }
+  });
+
+  // Verhindere das Öffnen neuer Fenster
+  mainWindow.webContents.setWindowOpenHandler(() => {
+    return { action: 'deny' };
+  });
+
+  // Set CSP headers for the main window
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self';",
+          "media-src 'self' blob:;",
+          "img-src 'self' blob:;",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval';", // Allow React development features
+          "style-src 'self' 'unsafe-inline';",
+          "connect-src 'self' ws: wss:;", // Allow WebSocket connections for React DevTools
+          "worker-src 'self' blob:;"
+        ].join('; ')
+      }
+    });
   });
 
   // Für Entwicklungszwecke: Die URL der Entwicklungsumgebung
@@ -31,8 +56,10 @@ function createWindow() {
   console.log('Lade URL:', startUrl);
   mainWindow.loadURL(startUrl);
 
-  // Immer DevTools öffnen, damit wir Fehler sehen können
-  mainWindow.webContents.openDevTools();
+  // DevTools nur im Entwicklungsmodus öffnen
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
 
   // Emitted when the window is closed
   mainWindow.on('closed', function () {
@@ -40,8 +67,58 @@ function createWindow() {
   });
 }
 
-// Create window when Electron has finished initialization
-app.whenReady().then(createWindow);
+// Register protocol for local files
+app.whenReady().then(() => {
+  // Registriere das file:// Protokoll für lokale Dateien
+  protocol.registerFileProtocol('file', (request, callback) => {
+    try {
+      const url = request.url.substr(7);
+      const decodedPath = decodeURIComponent(url);
+      const normalizedPath = path.normalize(decodedPath);
+      
+      // Überprüfe, ob die Datei existiert
+      if (!fs.existsSync(normalizedPath)) {
+        console.error(`Datei existiert nicht: ${normalizedPath}`);
+        callback({ error: -2 });
+        return;
+      }
+      
+      console.log(`File-Protokoll-Handler: Verarbeite URL ${request.url} zu Pfad ${normalizedPath}`);
+      callback({ path: normalizedPath });
+    } catch (error) {
+      console.error('Fehler im File-Protokoll-Handler:', error);
+      callback({ error: -2 });
+    }
+  });
+  
+  // Erstelle das Hauptfenster
+  createWindow();
+});
+
+// Verhindere das Öffnen des Browsers
+app.on('web-contents-created', (event, contents) => {
+  contents.on('new-window', (event, navigationUrl) => {
+    event.preventDefault();
+  });
+  
+  // Verhindere Navigation zu externen URLs
+  contents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    if (parsedUrl.protocol !== 'file:' && parsedUrl.protocol !== 'audio:') {
+      event.preventDefault();
+    }
+  });
+
+  // Erlaube file:// URLs für Audio-Wiedergabe
+  contents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' 'unsafe-eval' data: file: blob:; media-src 'self' data: file: blob:;"]
+      }
+    });
+  });
+});
 
 // Quit when all windows are closed
 app.on('window-all-closed', function () {
@@ -314,10 +391,10 @@ ipcMain.handle('check-path-exists', async (event, filePath) => {
   }
 });
 
-// IPC-Handler für das Laden von Audiodateien
+// IPC-Handler für das Laden von Audiodateien als Blob
 ipcMain.handle('load-audio-file', async (event, filePath) => {
   try {
-    console.log("Lade Audiodatei:", filePath);
+    console.log("Lade Audiodatei als Blob:", filePath);
     
     // Pfadexistenz-Check
     const exists = fs.existsSync(filePath);
@@ -333,25 +410,42 @@ ipcMain.handle('load-audio-file', async (event, filePath) => {
       return { success: false, error: 'Pfad ist keine Datei.' };
     }
     
-    // Dateiinhalt als BASE64 kodieren
-    const data = fs.readFileSync(filePath);
-    const base64data = data.toString('base64');
-    
     // MIME-Typ bestimmen
     const mimeType = getMimeType(filePath);
     
-    // Datenurl zurückgeben
-    const dataUrl = `data:${mimeType};base64,${base64data}`;
+    // Datei als Buffer lesen
+    const fileBuffer = fs.readFileSync(filePath);
+    
+    // Buffer zu Base64 konvertieren
+    const base64Data = fileBuffer.toString('base64');
+    
+    // Data URL erstellen mit korrektem MIME-Typ
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+    
+    // Erstelle eine lokale URL für den Fallback
+    const localUrl = url.format({
+      pathname: filePath,
+      protocol: 'file',
+      slashes: true
+    });
+    
+    console.log(`Audiodatei als Blob geladen: ${path.basename(filePath)}, Größe: ${stats.size} Bytes`);
     
     return { 
       success: true, 
-      dataUrl,
+      dataUrl: dataUrl,
+      localUrl: localUrl,
       fileName: path.basename(filePath),
-      size: stats.size
+      size: stats.size,
+      mimeType,
+      filePath: filePath
     };
   } catch (error) {
     console.error(`Fehler beim Laden der Audiodatei: ${error.message}`);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: `Fehler beim Laden der Audiodatei: ${error.message}` 
+    };
   }
 });
 
@@ -471,6 +565,48 @@ ipcMain.handle('load-album-cover', async (event, coverPath) => {
   }
 });
 
+// IPC-Handler für das Laden von Dateien als Blob
+ipcMain.handle('readFileAsBlob', async (event, filePath) => {
+  try {
+    console.log("Lade Datei als Blob:", filePath);
+    
+    // Pfadexistenz-Check
+    if (!fs.existsSync(filePath)) {
+      console.error(`Datei existiert nicht: ${filePath}`);
+      return null;
+    }
+    
+    // Dateistatistik lesen
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile()) {
+      console.error(`Pfad ist keine Datei: ${filePath}`);
+      return null;
+    }
+    
+    // MIME-Typ bestimmen
+    const mimeType = getMimeType(filePath);
+    
+    // Datei als Buffer lesen
+    const fileBuffer = fs.readFileSync(filePath);
+    
+    // Buffer zu Blob konvertieren
+    const blob = new Blob([fileBuffer], { type: mimeType });
+    
+    console.log(`Datei als Blob geladen: ${path.basename(filePath)}, Größe: ${stats.size} Bytes`);
+    
+    return {
+      success: true,
+      blob,
+      fileName: path.basename(filePath),
+      size: stats.size,
+      mimeType
+    };
+  } catch (error) {
+    console.error(`Fehler beim Laden der Datei als Blob: ${error.message}`);
+    return null;
+  }
+});
+
 // Hilfsfunktion zur Bestimmung des MIME-Typs anhand der Dateiendung
 function getMimeType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -573,4 +709,49 @@ function generateSimulatedWaveformData(seed, width) {
   }
   
   return waveform;
-} 
+}
+
+// IPC-Handler für das Lesen von Audiodateien als Buffer
+ipcMain.handle('read-audio-buffer', async (event, filePath) => {
+  try {
+    console.log("Lese Audiodatei als Buffer:", filePath);
+    
+    // Pfadexistenz-Check
+    if (!fs.existsSync(filePath)) {
+      console.error(`Datei existiert nicht: ${filePath}`);
+      return { success: false, error: 'Datei existiert nicht' };
+    }
+    
+    // Dateistatistik lesen
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile()) {
+      console.error(`Pfad ist keine Datei: ${filePath}`);
+      return { success: false, error: 'Pfad ist keine Datei' };
+    }
+    
+    // MIME-Typ bestimmen
+    const mimeType = getMimeType(filePath);
+    
+    // Datei als Buffer lesen
+    const buffer = fs.readFileSync(filePath);
+    
+    console.log(`Audiodatei als Buffer geladen: ${path.basename(filePath)}, Größe: ${stats.size} Bytes`);
+    
+    // Buffer in ArrayBuffer umwandeln für die Übertragung
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
+    
+    return {
+      success: true,
+      buffer: arrayBuffer,
+      fileName: path.basename(filePath),
+      size: stats.size,
+      mimeType
+    };
+  } catch (error) {
+    console.error(`Fehler beim Lesen der Audiodatei: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}); 
