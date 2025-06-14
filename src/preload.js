@@ -13,7 +13,10 @@ const invoke = (channel, ...args) => {
 contextBridge.exposeInMainWorld('api', {
   // File system operations
   checkPathExists: (path) => invoke('check-path-exists', path),
-  selectFolder: () => invoke('select-folder'),
+  // use same IPC channel as main process
+  selectDirectory: (options = {}) => invoke('select-directory', options),
+  // alias for older code
+  selectFolder: (options = {}) => invoke('select-directory', options),
   listSongs: (directoryPath, includeSubdirectories) => 
     invoke('list-songs', directoryPath, includeSubdirectories),
   
