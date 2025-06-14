@@ -19,6 +19,7 @@ import {
   Share2,
   Edit,
   Folder,
+  FolderPlus,
   Tag,
   Trash2,
   ChevronRight,
@@ -109,6 +110,7 @@ export const Icons = {
   share: Share2,
   edit: Edit,
   folder: Folder,
+  folderPlus: FolderPlus,
   tag: Tag,
   delete: Trash2,
   

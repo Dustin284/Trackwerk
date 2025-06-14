@@ -16,8 +16,10 @@ console.log('Preload script is running');
 contextBridge.exposeInMainWorld('api', {
   // File system operations
   checkPathExists: (path) => invoke('check-path-exists', path),
-  selectFolder: () => invoke('select-folder'),
-  selectDirectory: () => invoke('select-folder'),
+  // unified directory selection helper
+  selectDirectory: (options = {}) => invoke('select-directory', options),
+  // backwards compatible alias
+  selectFolder: (options = {}) => invoke('select-directory', options),
   listSongs: (directoryPath, includeSubdirectories) => 
     invoke('list-songs', directoryPath, includeSubdirectories),
   
